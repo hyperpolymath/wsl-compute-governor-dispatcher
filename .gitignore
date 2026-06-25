@@ -1,0 +1,6 @@
+# local state / caches
+*.log
+*.stamp
+__pycache__/
+*.pyc
+.venv/

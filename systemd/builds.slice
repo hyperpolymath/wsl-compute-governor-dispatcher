@@ -1,0 +1,14 @@
+[Unit]
+Description=Background compute (builds, provers) — CPU-deprioritised, memory-capped
+
+# Confines rustc/cargo/idris2/gnatprove/z3/etc. so a background build storm can
+# neither starve the interactive Claude agents of CPU nor OOM the WSL2 VM.
+#   CPUWeight 20 (vs default 100) -> builds yield CPU under contention.
+#   MemoryHigh/Max -> the WHOLE slice is throttled/reclaimed before it can take
+#   down the VM. Tune Memory* to your .wslconfig memory= cap.
+[Slice]
+CPUWeight=20
+IOWeight=20
+MemoryHigh=5G
+MemoryMax=6G
+MemorySwapMax=4G

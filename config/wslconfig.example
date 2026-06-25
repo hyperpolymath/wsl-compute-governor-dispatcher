@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# Example %USERPROFILE%\.wslconfig — copy the relevant lines into YOUR Windows
+# user-profile .wslconfig, then run `wsl --shutdown` (PowerShell) to apply.
+#
+# RULE OF THUMB: set memory= to ~70-80% of host RAM, NEVER near total — leave
+# Windows 3-4GB. autoMemoryReclaim=gradual means the cap is a CEILING, not a
+# reservation: WSL only consumes what it needs and returns the rest.
+#
+# Example for a 16GB host (the values this pilot was tuned with):
+[wsl2]
+memory=12GB        # was 8GB; raised to stop an OOM crash-loop. Host=15.6GB -> ~3.6GB left for Windows.
+processors=4
+swap=8GB           # was 4GB; bigger swap absorbs spikes instead of OOM-killing the VM.
+# vmIdleTimeout=-1 # optional: never auto-shutdown the utility VM on idle.
+
+[experimental]
+autoMemoryReclaim=gradual   # return unused memory to Windows over time
+sparseVhd=true              # shrink the VHD as data is freed

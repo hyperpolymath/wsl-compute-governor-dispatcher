@@ -1,0 +1,8 @@
+[Unit]
+Description=Estate guard — WSL2 memory/process watchdog + git GC hygiene
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/estate-guard.sh
+Nice=10
+IOSchedulingClass=idle

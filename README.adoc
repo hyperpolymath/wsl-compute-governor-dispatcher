@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= wsl-compute-governor-dispatcher
+:toc: macro
+:toclevels: 3
+
+image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[code: MPL-2.0]
+image:https://img.shields.io/badge/Docs-CC--BY--SA--4.0-lightgrey.svg[docs: CC-BY-SA-4.0]
+image:https://img.shields.io/badge/status-phased%20pilot-orange.svg[status: phased pilot]
+image:https://img.shields.io/badge/scope-WSL2-purple.svg[scope: WSL2]
+
+[CAUTION]
+====
+*This is a putative solution, tried on one machine. Phase-1 pilot, WSL2-focused.*
+It is offered as a *design to share and reason about*, not a hardened product. It
+may not help your workload at all (see <<limitations>>). It is published because
+the pattern is reusable and the failure modes are worth documenting honestly.
+====
+
+A small, opt-in pattern for *crash-resistant multi-agent development on WSL2*: stop
+the lightweight VM OOM-crash-looping when you run several heavy agents + compilers
++ provers at once, by **partitioning** CPU/RAM (not by buying more), **watching**
+for pressure, and **offloading** the one class of work that genuinely can leave the
+CPU (ML, to the GPU).
+
+toc::[]
+
+== The problem it addresses
+
+Running many concurrent Claude/agent sessions, each spawning Rust/Idris2 builds and
+SMT/SPARK provers, against a WSL2 VM with a fixed `memory=` cap, can exhaust the VM's
+RAM. When that happens the Windows host kills/restarts the lightweight VM — and *every
+process inside dies at the same instant*. From inside it looks like "all my agents
+crashed at once." It is not the agents fighting; it is the VM dropping out from under
+them. Repeated, it becomes a crash-loop.
+
+== The approach (three parts, all opt-in)
+
+[cols="1,3"]
+|===
+| 1. *Cap & headroom* | Tune `.wslconfig` `memory=`/`swap=` with host-RAM headroom. (Config only; see `config/wslconfig.example`.)
+| 2. *Partition* | A systemd `builds.slice` (CPU-deprioritised + memory-capped) plus a `bgc` wrapper. Heavy builds run *under* the interactive agents and *cannot* collectively OOM the VM — the slice is throttled/reclaimed first.
+| 3. *Watch* | `estate-guard`, a systemd user timer that warns on memory/process pressure, `renice`s runaway build tools (never the agents), and does hourly git GC hygiene.
+|===
+
+Plus *honest GPU offload*: only ML/CUDA-style work can leave the CPU. The repo ships
+a phased GPU example — *ONNX-Runtime first*, then PyTorch and CuPy/Numba.
+
+== Install
+
+[source,bash]
+----
+just install        # installs bin/bgc, the systemd units, enables the timer
+just status         # show slice limits + timer state + memory
+# edit your Windows %USERPROFILE%\.wslconfig per config/wslconfig.example, then:
+#   wsl --shutdown   (from PowerShell) to apply memory/swap changes
+----
+
+== Use
+
+[source,bash]
+----
+bgc cargo build --release       # runs in the deprioritised, memory-capped slice
+bgc gnatprove -P proj.gpr        # same — provers stay off the foreground
+tail -f ~/.local/state/estate-guard.log   # watch pressure warnings
+----
+
+[#gpu]
+== GPU offload (phased)
+
+GPU memory is *not* extra system RAM and helps *only* GPU-amenable work. See
+`docs/gpu-offload.adoc`. Phase order:
+
+. *ONNX-Runtime* (`scripts/gpu-onnx-smoketest.py`) — lightest; verifies the CUDA
+  execution provider on your GPU.
+. *PyTorch* — for training / the neural side of neurosymbolic workloads.
+. *CuPy / Numba* — for custom array / kernel offload.
+
+[#limitations]
+== Limitations (read before trusting it)
+
+* *Experimental, n=1.* Tried on one machine (RTX 4070 laptop, WSL2, systemd). Not battle-tested.
+* *Most heavy load cannot be offloaded.* Compilers (`rustc`, `idris2`), SMT/SPARK
+  provers (`z3`, `cvc5`, `gnatprove`), and the agent orchestration are CPU-bound. The
+  GPU does *not* help them. The Claude agents' LLM inference runs *cloud-side*, so the
+  local GPU cannot accelerate it either.
+* *`MemoryMax` is a trade.* It prevents a VM-wide OOM by risking that an over-cap build
+  is OOM-killed *inside the slice*. A dead build beats a dead VM — but it is a trade.
+* *The watchdog `renice` is CPU-politeness, not memory control.* The slice limits are
+  the real guard; the watchdog is early-warning + CPU smoothing.
+* *Opt-in only.* `bgc` confines what you launch through it. It does not auto-capture
+  every `cargo`/`rustc`. (Deliberate — auto-capture is fragile.)
+* *Requires* systemd-enabled WSL + cgroup v2 + controller delegation (cpu, memory, pids).
+* *Memory cap needs host headroom* — never set `.wslconfig` `memory=` near total host RAM.
+
+== Requirements
+
+WSL2 with `[boot] systemd=true`; cgroup v2 with `cpu memory pids` delegated to the
+user manager; `systemd-run`, `renice`, `git`. GPU phase additionally needs the NVIDIA
+WSL driver on the Windows host (exposes `/dev/dxg` + `/usr/lib/wsl/lib`) and Python.
+
+== Licence
+
+Code (scripts, units, `bin/`): *MPL-2.0*. Docs (`*.adoc`, `*.md`): *CC-BY-SA-4.0*.
+Full texts in `LICENSES/`. See `EXPLAINME.adoc` for the why, the author, and how to
+reason about whether this fits your setup.

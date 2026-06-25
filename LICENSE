@@ -1,0 +1,15 @@
+SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+
+wsl-compute-governor-dispatcher — dual licensing
+================================================
+
+Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+- Source code (bin/, scripts/, systemd/, config/, Justfile): MPL-2.0
+- Documentation (*.adoc, *.md, docs/):                        CC-BY-SA-4.0
+
+Full licence texts are vendored in LICENSES/:
+- LICENSES/MPL-2.0.txt
+- LICENSES/CC-BY-SA-4.0.txt
+
+Per-file `SPDX-License-Identifier:` headers are authoritative where present.

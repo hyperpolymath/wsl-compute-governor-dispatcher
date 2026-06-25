@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# bgc — run a heavy build/prover under the deprioritised, memory-capped
+# builds.slice, so it can't starve the interactive agents or OOM the WSL2 VM.
+#
+#   bgc cargo build --release
+#   bgc gnatprove -P proj.gpr
+#   bgc -j idris2 --build pkg.ipkg     # (-j: pass-through; just an example arg)
+#
+# Everything after the program name is passed through unchanged. The command
+# runs in a transient systemd scope inside builds.slice (CPUWeight=20,
+# MemoryMax=6G). Foreground `claude`/editor work stays at full priority.
+set -euo pipefail
+if [ "$#" -eq 0 ]; then
+  echo "usage: bgc <command> [args...]   # run command in the deprioritised builds.slice" >&2
+  exit 2
+fi
+exec systemd-run --user --slice=builds.slice --scope --quiet -- "$@"

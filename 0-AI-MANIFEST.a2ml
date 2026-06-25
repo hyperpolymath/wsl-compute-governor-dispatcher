@@ -1,0 +1,19 @@
+# AI Assistant Instructions — wsl-compute-governor-dispatcher  (0-AI Gateway)
+
+## What this repo IS
+A putative, WSL2-focused **phased pilot** for crash-resistant multi-agent dev:
+cgroup CPU/RAM partitioning (`builds.slice` + `bgc`), a memory/process watchdog
+(`estate-guard`), `.wslconfig` cap guidance, and honest GPU-offload examples
+(ONNX-Runtime first). Experimental, n=1 — see `EXPLAINME.adoc` and README "Limitations".
+
+## Licensing (standard estate canon — NO exception here)
+Code → MPL-2.0. Docs → CC-BY-SA-4.0. Full texts in `LICENSES/`. Per-file SPDX headers
+are authoritative. (Unlike `consent-aware-http`, this repo has no IETF carve-out.)
+
+## For agents working here
+- Keep claims honest and WSL2-scoped; do not overclaim (it's a pilot).
+- The scripts in `bin/`/`scripts/`/`systemd/` are the *tested* artefacts — keep them in
+  sync with what `scripts/install.sh` deploys.
+- GPU helps ONLY GPU-amenable work (ML/CUDA), never compilers/provers/agent orchestration.
+  Do not suggest GPU offload for Rust/Idris2/Z3/CVC5/gnatprove.
+- Machine-readable state: `.machine_readable/STATE.scm`.

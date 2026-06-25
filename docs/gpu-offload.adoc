@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= GPU offload — honest guidance (phased)
+
+== The rule
+GPU memory is *not* extra system RAM, and the GPU helps *only* GPU-amenable work.
+Offloading reduces CPU load *only* for that specific class of workload — it does
+nothing for the CPU-bound bulk of a compiler/prover-heavy estate.
+
+== What CAN move to the GPU
+* Neural / ML inference & training (incl. the neural side of neurosymbolic work)
+* Embeddings, large dense linear algebra, image/signal batch ops
+* Custom data-parallel kernels (CuPy / Numba)
+
+== What CANNOT (do not try)
+* `rustc`, `idris2`, AffineScript→wasm and other compilers — CPU-bound
+* `z3`, `cvc5`, `gnatprove`, SPARK — CPU-bound; no production GPU solvers
+* The Claude/agent processes — their LLM inference runs cloud-side, not locally
+
+== Phased adoption
+. *ONNX-Runtime* (`scripts/gpu-onnx-smoketest.py`) — lightest; confirms the CUDA
+  execution provider works on your GPU. Start here.
++
+[source,bash]
+----
+python3 -m pip install onnxruntime-gpu onnx numpy
+python3 scripts/gpu-onnx-smoketest.py
+----
+. *PyTorch* — training / neural side of neurosymbolic workloads (CUDA wheels; no
+  separate toolkit needed for prebuilt). Add once ONNX path is confirmed.
+. *CuPy / Numba* — custom array ops / JIT CUDA kernels for bespoke offload.
+
+== WSL2 specifics
+The NVIDIA WSL driver on the Windows host exposes `/dev/dxg` and mounts the runtime
+libs at `/usr/lib/wsl/lib` (incl. `libcuda.so`). `nvidia-smi` should list your GPU.
+You do *not* install a GPU driver inside WSL — only userspace (Python wheels / toolkit).
+VRAM is shared dynamically with Windows; there is no `.wslconfig` knob to size it.

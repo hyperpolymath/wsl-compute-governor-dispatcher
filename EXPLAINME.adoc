@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= EXPLAINME — wsl-compute-governor-dispatcher
+:toc: macro
+
+toc::[]
+
+== Who / what / why
+
+*Author:* Jonathan D.A. Jewell (`hyperpolymath`). I run many concurrent AI-agent
+sessions across a large repo estate, each spawning heavy compiles (Rust, Idris2,
+AffineScript→wasm) and formal-methods provers (SPARK/`gnatprove`, Z3, CVC5) inside a
+single WSL2 VM. The VM has a fixed memory cap. Under enough concurrency the VM
+OOMs and the Windows host restarts it — killing every agent simultaneously. This repo
+is the pattern I'm piloting to stop that, framed honestly as an experiment.
+
+== The one idea
+
+*You cannot offload your way out of this; you have to partition.* The instinct is
+"give it more memory" or "push work to the GPU." But:
+
+* The crash is *system-RAM* exhaustion, and the heavy consumers (compilers, provers,
+  agent orchestration) are CPU/RAM-bound with *no GPU path*. So the GPU can't absorb the load.
+* A bigger `memory=` cap only raises the ceiling you eventually hit under enough concurrency.
+
+The durable fix is *containment*: put background compute in a cgroup slice that is
+(a) CPU-deprioritised so it yields to the interactive agents, and (b) memory-capped so
+a build storm is throttled/reclaimed *before* it can take down the whole VM. Then the
+GPU is used only for the work that genuinely belongs there (ML), not as a RAM substitute.
+
+== The critical questions we worked through
+
+. *Scope* — WSL2-specific, or general Linux? → *WSL2-focused phased pilot.* The
+  cgroup-slice core is in fact general systemd/cgroup-v2 Linux; only the `.wslconfig`
+  layer is WSL-only. We scope the claims to WSL2 because that's where it's tested.
+. *Confinement* — auto-capture all builds, or opt-in? → *Opt-in via `bgc`.* Auto-capture
+  (intercepting every `cargo`/`rustc`) is fragile and surprising. Explicit `bgc <cmd>` is
+  honest and predictable.
+. *GPU stack* — which first? → *ONNX-Runtime first* (lightest, cleanest provider check),
+  then PyTorch (training / neurosymbolic neural side), then CuPy/Numba (custom kernels).
+. *Naming* — `wsl-compute-governor-dispatcher`: it *governs* (caps/partitions) and
+  *dispatches* (routes work to the right place — slice, or GPU).
+
+== How to reason about whether this fits you
+
+Use it if: you run *several* heavy concurrent workloads in *one* WSL2 VM and see the VM
+restart under load. Skip it if: your work is single-stream, or already fits comfortably
+in the cap, or your heavy work is genuinely GPU-amenable (then just use the GPU directly).
+
+== Honesty clause
+
+This is `n=1`, phase-1. If it never recurs for me I may not take it further; if it holds
+up, the design space (richer dispatch policies, per-workload slices, NPU/iGPU routing)
+is worth exploring. The value here is as much the *documented reasoning and failure
+modes* (see README "Limitations") as the scripts. Treat it as a hypothesis with a
+working prototype, not a settled answer.
