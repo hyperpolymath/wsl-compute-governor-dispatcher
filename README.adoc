@@ -71,8 +71,7 @@ tail -f ~/.local/state/estate-guard.log   # watch pressure warnings
 GPU memory is *not* extra system RAM and helps *only* GPU-amenable work. See
 `docs/gpu-offload.adoc`. Phase order:
 
-. *ONNX-Runtime* (`scripts/gpu-onnx-smoketest.py`) — lightest; verifies the CUDA
-  execution provider on your GPU.
+. *GPU reachability* (`scripts/gpu-smoketest.sh`) — lightest; verifies the GPU and the CUDA driver libraries are reachable from WSL2. ONNX-Runtime comes next.
 . *PyTorch* — for training / the neural side of neurosymbolic workloads.
 . *CuPy / Numba* — for custom array / kernel offload.
 

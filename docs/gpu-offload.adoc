@@ -17,16 +17,16 @@ nothing for the CPU-bound bulk of a compiler/prover-heavy estate.
 * The Claude/agent processes — their LLM inference runs cloud-side, not locally
 
 == Phased adoption
-. *ONNX-Runtime* (`scripts/gpu-onnx-smoketest.py`) — lightest; confirms the CUDA
-  execution provider works on your GPU. Start here.
+. *GPU reachability* (`scripts/gpu-smoketest.sh`) — lightest; confirms the WSL GPU
+  device, the NVIDIA driver libraries and `nvidia-smi` work. Start here. An
+  ONNX-Runtime CUDA run is the next step once this passes.
 +
 [source,bash]
 ----
-python3 -m pip install onnxruntime-gpu onnx numpy
-python3 scripts/gpu-onnx-smoketest.py
+bash scripts/gpu-smoketest.sh
 ----
 . *PyTorch* — training / neural side of neurosymbolic workloads (CUDA wheels; no
-  separate toolkit needed for prebuilt). Add once ONNX path is confirmed.
+  separate toolkit needed for prebuilt). Add once the GPU check passes.
 . *CuPy / Numba* — custom array ops / JIT CUDA kernels for bespoke offload.
 
 == WSL2 specifics
