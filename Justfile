@@ -18,9 +18,9 @@ status:
     @echo "== memory =="; free -h
     @echo "== bgc =="; command -v bgc || echo "not on PATH (add ~/.local/bin)"
 
-# phase-1 GPU offload check (needs: pip install onnxruntime-gpu onnx numpy)
+# phase-1 GPU offload check (needs the NVIDIA WSL driver)
 gpu-smoketest:
-    python3 scripts/gpu-onnx-smoketest.py
+    bash scripts/gpu-smoketest.sh
 
 # end-to-end sanity: install, then prove a command lands in builds.slice
 test: install
